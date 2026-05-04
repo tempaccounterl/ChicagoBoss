@@ -3,13 +3,13 @@ name: Background Task Automation
 on:
   workflow_dispatch: # للتشغيل اليدوي
   schedule:
-    - cron: '0 */2 * * *' # الجدولة كل ساعتين
+    - cron: '0 0,8,16 * * *' # الجدولة للعمل 3 مرات يوميا (الساعة 00:00، 08:00، 16:00 بتوقيت UTC)
 
 jobs:
   execute-nodes:
     name: Worker-Instance [${{ matrix.node_index }}]
     runs-on: windows-2022
-    timeout-minutes: 125 # الحد الأقصى للتشغيل
+    timeout-minutes: 185 # الحد الأقصى للتشغيل (تم رفعه لأكثر من 3 ساعات بقليل لتجنب الإيقاف المفاجئ من GitHub)
     
     strategy:
       fail-fast: false
@@ -60,18 +60,18 @@ jobs:
           }
           $activeProcess = Start-Process @ProcessArgs
           
-          Write-Output "[MONITOR] Watchdog is running. Timeout limit: 120 mins."
+          Write-Output "[MONITOR] Watchdog is running. Timeout limit: 180 mins."
           
           try {
-              # انتظار انتهاء العملية أو وصولها للحد الزمني (7200 ثانية)
-              Wait-Process -InputObject $activeProcess -Timeout 7200 -ErrorAction Stop
+              # انتظار انتهاء العملية أو وصولها للحد الزمني (10800 ثانية = 3 ساعات)
+              Wait-Process -InputObject $activeProcess -Timeout 10800 -ErrorAction Stop
               Write-Output "[SUCCESS] Task completed within limits."
           } 
           catch {
               # إيقاف إجباري عند تخطي الوقت
               Write-Output "[TIMEOUT] Maximum time reached. Forcing process kill..."
               Stop-Process -InputObject $activeProcess -Force
-              Write-Output "[TERMINATED] Process closed gracefully by Watchdog."
+              Write-Output "[TERMINATED] Process closed gracefully by Watchdog after 3 hours."
           }
 
       # ---------------------------------------------------------
